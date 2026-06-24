@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>한달보고서 작성 도구</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2e3a54">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="한달보고서">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css');
+
+  :root{
+    --navy:#2e3a54;
+    --navy-deep:#222c41;
+    --gold:#e7a93a;
+    --gold-deep:#d9962a;
+    --sage:#4f7468;
+    --sage-deep:#3e5c52;
+    --red:#c8473f;
+    --ink:#26282d;
+    --line:#d7d3ca;
+    --paper:#ffffff;
+    --bg:#efece4;
+  }
+  *{box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Pretendard Variable','Pretendard',-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.45;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+    padding:10px 14px;
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  }
+  .toolbar .group{display:flex; gap:6px; align-items:center;}
+  .toolbar .spacer{flex:1 1 auto;}
+  select,.btn,input[type=text]{
+    font-family:inherit; font-size:14px;
+    border:1px solid var(--line); border-radius:9px;
+    background:#fff; color:var(--ink);
+    padding:8px 11px; cursor:pointer;
+  }
+  select{padding-right:8px;}
+  .btn{transition:all .15s; white-space:nowrap;}
+  .btn:hover{border-color:#b9b3a6;}
+  .btn.primary{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .btn.primary:hover{background:var(--navy-deep);}
+  .btn.gold{background:var(--gold); border-color:var(--gold-deep); color:#3a2c08; font-weight:600;}
+  .btn.gold:hover{background:var(--gold-deep);}
+  .btn.ghost{background:transparent;}
+  .hint{
+    max-width:1180px; margin:8px auto 0; padding:0 14px;
+    font-size:12.5px; color:#8a8478;
+  }
+
+  /* ---------- Paper ---------- */
+  .stage{padding:18px 14px 60px; display:flex; justify-content:center;}
+  .paper{
+    width:100%; max-width:794px;
+    background:var(--paper);
+    box-shadow:0 8px 30px rgba(40,40,40,.12);
+    padding:26px 30px 34px;
+    border-radius:2px;
+  }
+
+  /* Header */
+  .doc-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:14px; padding-bottom:10px;
+    border-bottom:3px solid var(--navy);
+  }
+  .doc-title{font-size:25px; font-weight:800; letter-spacing:-.5px; color:#1c2333;}
+  .doc-title small{font-weight:700; color:#1c2333;}
+  .brand{
+    text-align:right; font-size:13px; color:#8a8478; font-weight:500;
+    border:none; outline:none; background:transparent;
+    min-width:120px; padding:2px 4px;
+  }
+  .brand:focus{background:#faf7ef; border-radius:6px;}
+
+  /* Body layout */
+  .doc-body{ margin-top:16px; }
+  .cols{ display:grid; grid-template-columns:1fr; gap:18px; }
+  @media(min-width:760px){ .cols{ grid-template-columns:1.04fr 1fr; } }
+
+  /* Vertical tracker table */
+  table.cal{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
+  table.cal th, table.cal td{ border:1px solid #c9c7c1; text-align:center; padding:3px 2px; }
+  table.cal thead th{
+    background:var(--navy); color:#fff; font-weight:600;
+    padding:6px 2px; font-size:11.5px; vertical-align:middle;
+  }
+  .th-cat{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+  td.wk{ background:#f6f5f1; font-weight:700; color:#4a5168; font-size:11px; }
+  td.dow{ font-weight:600; }
+  td.dow.weekend{ color:var(--red); }
+  td.date{ color:#555; font-size:11.5px; }
+  .cell-check{ padding:2px; cursor:pointer; }
+  .cell-check:hover{ background:#fafafa; }
+  .box{
+    display:inline-block; width:16px; height:16px;
+    border:1.6px solid #6c6c6c; border-radius:3px; background:#fff;
+    cursor:pointer; vertical-align:middle; transition:all .12s;
+  }
+  .box:hover{border-color:var(--navy);}
+  .box.on{background:#2b2b2b; border-color:#2b2b2b;}
+  .all-btn{
+    font-size:10px; line-height:1; padding:2px 6px; border-radius:20px;
+    border:1px solid rgba(255,255,255,.55); background:transparent; color:#fff;
+    cursor:pointer;
+  }
+  .all-btn.active{background:var(--gold); border-color:var(--gold); color:#3a2c08; font-weight:700;}
+
+  /* Summary chart */
+  .summary{ display:flex; gap:12px; margin-bottom:14px; }
+  .stat{
+    flex:1; border:1px solid #e3ded3; border-radius:11px;
+    padding:10px 14px; background:#fbfaf6;
+  }
+  .stat-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .stat-name{ font-weight:700; font-size:13px; color:#2b3346; }
+  .stat-name::before{
+    content:""; display:inline-block; width:9px; height:9px; border-radius:3px;
+    background:var(--c); margin-right:6px; vertical-align:middle;
+  }
+  .stat-count{ font-size:11.5px; color:#8a8478; white-space:nowrap; }
+  .stat-count b{ font-size:17px; color:var(--c); font-weight:800; }
+  .bar{ height:8px; background:#ece8de; border-radius:99px; margin:9px 0 5px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--c); border-radius:99px; transition:width .35s ease; }
+  .stat-pct{ font-size:11px; color:#9a9485; text-align:right; font-weight:600; }
+
+  /* Notes */
+  .note-block{display:block;}
+  .note-sec{display:flex; flex-direction:column; margin-bottom:12px;}
+  .note-head{
+    background:var(--sage); color:#fff; font-weight:700; font-size:12.5px;
+    padding:6px 10px; border:1px solid var(--sage-deep);
+    border-left:4px solid var(--sage-deep);
+  }
+  .note-area{
+    width:100%; border:1px solid #c9c7c1; border-top:none;
+    padding:9px 11px; font-family:inherit; font-size:12px; line-height:1.6;
+    color:var(--ink); resize:none; outline:none; overflow:hidden;
+    min-height:96px;
+  }
+  .note-area:focus{background:#f4f8f6;}
+  .note-area::placeholder{color:#bdb8ac;}
+  .note-print{display:none;}
+
+  /* Toast */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--navy); color:#fff; padding:11px 18px; border-radius:10px;
+    font-size:14px; opacity:0; pointer-events:none; transition:all .25s; z-index:50;
+    box-shadow:0 6px 20px rgba(0,0,0,.2);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ---------- Mobile ---------- */
+  @media(max-width:600px){
+    /* 툴바: 2줄 레이아웃 */
+    .toolbar{ gap:6px; padding:8px 10px; }
+    .toolbar .group:first-child{ width:100%; }
+    .toolbar .group:first-child select{ flex:1; }
+    .toolbar .group:nth-child(2){ width:100%; }
+    .toolbar .group:nth-child(2) select{ flex:1; width:100%; }
+    .toolbar .spacer{ display:none; }
+    .toolbar .group:last-child{ width:100%; justify-content:flex-end; gap:5px; }
+    .btn, select{ font-size:13px; padding:7px 9px; }
+    .hint{ font-size:11.5px; }
+
+    /* paper: 여백 줄임 */
+    .stage{ padding:10px 8px 40px; }
+    .paper{ padding:16px 12px 20px; }
+
+    /* 헤더: 제목 작게 */
+    .doc-title{ font-size:19px; }
+    .brand{ font-size:12px; min-width:80px; }
+
+    /* 요약 카드: 한 줄에 3개 → 컴팩트하게 */
+    .summary{ gap:6px; margin-bottom:10px; }
+    .stat{ padding:7px 8px; border-radius:8px; }
+    .stat-top{ flex-direction:column; gap:2px; align-items:flex-start; }
+    .stat-name{ font-size:11px; }
+    .stat-name::before{ width:7px; height:7px; margin-right:4px; }
+    .stat-count{ font-size:10px; }
+    .stat-count b{ font-size:14px; }
+    .bar{ height:6px; margin:5px 0 3px; }
+    .stat-pct{ font-size:10px; }
+
+    /* 표: 폰트/패딩 축소로 화면 내 수용 */
+    table.cal{ font-size:10px; }
+    table.cal th, table.cal td{ padding:3px 1px; }
+    table.cal thead th{ font-size:10px; padding:5px 1px; }
+    .th-cat{ gap:2px; }
+    .all-btn{ font-size:9px; padding:2px 4px; }
+    td.wk{ font-size:9px; }
+    td.date{ font-size:10px; }
+    .box{ width:18px; height:18px; border-radius:4px; }
+
+    /* 관찰 영역 */
+    .note-head{ font-size:11.5px; }
+    .note-area{ font-size:12px; min-height:70px; }
+  }
+
+  @media(max-width:380px){
+    table.cal{ font-size:9px; }
+    table.cal th, table.cal td{ padding:2px 0; }
+    .box{ width:16px; height:16px; }
+    .all-btn{ display:none; }
+  }
+
+  /* ---------- Print ---------- */
+  @media print{
+    @page{ size:A4 portrait; margin:10mm; }
+    body{background:#fff;}
+    .toolbar,.hint,.toast,.no-print{display:none !important;}
+    .stage{padding:0;}
+    .paper{box-shadow:none; max-width:100%; width:100%; padding:0; border-radius:0;}
+    .doc-body{display:block; margin-top:10px;}
+    .summary{ gap:8px; margin-bottom:12px; break-inside:avoid; }
+    .stat{ padding:6px 9px; border-radius:8px; }
+    .stat-name{ font-size:10px; }
+    .stat-name::before{ width:7px; height:7px; margin-right:4px; }
+    .stat-count{ font-size:9px; }
+    .stat-count b{ font-size:12px; }
+    .bar{ height:6px; margin:5px 0 3px; }
+    .stat-pct{ font-size:8.5px; }
+    .cols{ display:block; }
+    .cols::after{ content:""; display:block; clear:both; }
+    table.cal{ float:left; width:51%; margin:0; font-size:9px; }
+    table.cal th, table.cal td{ padding:1.5px 2px; }
+    table.cal thead th{ padding:3px 2px; font-size:9px; }
+    .box{ width:12px; height:12px; border-width:1.3px; }
+    .all-btn{display:none;}
+    .note-block{ display:block; margin-left:54%; }
+    .note-head{font-size:10px; padding:4px 8px; break-after:avoid;}
+    .note-area{display:none !important;}
+    .note-print{
+      display:block !important; white-space:pre-wrap; word-break:break-word;
+      font-size:10px; line-height:1.55; padding:6px 8px; color:var(--ink);
+      border:1px solid #c9c7c1; border-top:none; min-height:44px;
+    }
+    .note-sec{display:block; break-inside:auto; margin-bottom:8px;}
+    .doc-title{font-size:21px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="group">
+    <select id="yearSel" aria-label="연도"></select>
+    <select id="monthSel" aria-label="월"></select>
+  </div>
+  <div class="group">
+    <select id="loadSel" title="저장된 보고서 불러오기"><option value="">저장된 보고서 불러오기</option></select>
+  </div>
+  <div class="spacer"></div>
+  <div class="group">
+    <button class="btn ghost" id="clearBtn">초기화</button>
+    <button class="btn ghost" id="exportBtn">백업 내보내기</button>
+    <button class="btn ghost" id="importBtn">가져오기</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+    <button class="btn primary" id="saveBtn">저장</button>
+    <button class="btn gold" id="printBtn">🖨 인쇄</button>
+  </div>
+</div>
+<div class="hint">연·월을 고르면 날짜가 자동으로 생성돼요. 표의 칸을 눌러 인증을 표시하고, 각 항목 헤더의 ‘전체’ 버튼으로 한 번에 선택할 수 있어요. 인쇄 버튼을 눌러 출력하거나 PDF로 저장할 수 있습니다.</div>
+
+<div class="stage">
+  <div class="paper" id="paper">
+    <div class="doc-head">
+      <div class="doc-title" id="docTitle">한달보고서</div>
+      <input class="brand no-edit-print" id="brandInput" value="새벽달과 달마고치" aria-label="작성자/채널명">
+    </div>
+
+    <div class="doc-body">
+      <!-- 요약 차트 -->
+      <div class="summary" id="summary"></div>
+
+      <div class="cols">
+        <!-- 왼쪽: 날짜별 인증 (세로 표) -->
+        <table class="cal" id="calTable">
+          <thead>
+            <tr>
+              <th style="width:16%">주차</th>
+              <th style="width:10%">요일</th>
+              <th style="width:16%">날짜</th>
+              <th><div class="th-cat"><span>영어책</span><button class="all-btn" data-cat="book">전체</button></div></th>
+              <th><div class="th-cat"><span>영상</span><button class="all-btn" data-cat="video">전체</button></div></th>
+              <th><div class="th-cat"><span>마주<br>이야기</span><button class="all-btn" data-cat="talk">전체</button></div></th>
+            </tr>
+          </thead>
+          <tbody id="calBody"></tbody>
+        </table>
+
+        <!-- 오른쪽: 관찰/고민 -->
+        <div class="note-block">
+        <div class="note-sec">
+          <div class="note-head">아이 반응관찰 및 고민 - 영어그림책</div>
+          <textarea class="note-area" id="note-book" data-n="book" placeholder="영어그림책에 대한 아이의 반응, 읽은 책, 고민 등을 적어주세요."></textarea>
+          <div class="note-print" data-np="book"></div>
+        </div>
+        <div class="note-sec">
+          <div class="note-head">아이 반응관찰 및 고민 - 영어영상</div>
+          <textarea class="note-area" id="note-video" data-n="video" placeholder="본 영상, 아이의 반응, 노출 시간 등을 적어주세요."></textarea>
+          <div class="note-print" data-np="video"></div>
+        </div>
+        <div class="note-sec">
+          <div class="note-head">아이 반응관찰 및 고민 - 마주이야기 외 그림, 글쓰기, 놀이</div>
+          <textarea class="note-area" id="note-play" data-n="play" placeholder="마주이야기, 그림, 글쓰기, 놀이 등 한 달간의 기록을 적어주세요."></textarea>
+          <div class="note-print" data-np="play"></div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DOW = ['일','월','화','수','목','금','토'];
+const pad = n => String(n).padStart(2,'0');
+const daysInMonth = (y,m) => new Date(y, m, 0).getDate();
+const dateKey = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+const reportKey = (y,m) => `momreport:${y}-${pad(m)}`;
+
+const now = new Date();
+let state = freshState(now.getFullYear(), now.getMonth()+1, '새벽달과 달마고치');
+let saveTimer = null;
+
+function freshState(y,m,brand){
+  return { year:y, month:m, brand:brand||'새벽달과 달마고치',
+           checks:{}, notes:{book:'',video:'',play:''} };
+}
+
+/* ---------- Storage (Claude 저장 → localStorage → 메모리 순) ---------- */
+const Store = {
+  mem:{},
+  _ls:null,
+  hasLS(){
+    if(this._ls!==null) return this._ls;
+    try{ const k='__mr_test'; localStorage.setItem(k,'1'); localStorage.removeItem(k); this._ls=true; }
+    catch(e){ this._ls=false; }
+    return this._ls;
+  },
+  async set(k,v){
+    try{ if(window.storage){ await window.storage.set(k,v,false); return; } }catch(e){}
+    if(this.hasLS()){ try{ localStorage.setItem(k,v); return; }catch(e){} }
+    this.mem[k]=v;
+  },
+  async get(k){
+    try{ if(window.storage){ const r=await window.storage.get(k,false); return r?r.value:null; } }catch(e){}
+    if(this.hasLS()){ try{ return localStorage.getItem(k); }catch(e){} }
+    return this.mem[k]??null;
+  },
+  async list(p){
+    try{ if(window.storage){ const r=await window.storage.list(p,false); return r?r.keys:[]; } }catch(e){}
+    if(this.hasLS()){
+      try{ const out=[]; for(let i=0;i<localStorage.length;i++){ const key=localStorage.key(i); if(key&&key.startsWith(p)) out.push(key); } return out; }catch(e){}
+    }
+    return Object.keys(this.mem).filter(k=>k.startsWith(p));
+  },
+  async del(k){
+    try{ if(window.storage){ await window.storage.delete(k,false); return; } }catch(e){}
+    if(this.hasLS()){ try{ localStorage.removeItem(k); return; }catch(e){} }
+    delete this.mem[k];
+  }
+};
+
+/* ---------- Init selectors ---------- */
+function initSelectors(){
+  const yearSel=document.getElementById('yearSel');
+  const monthSel=document.getElementById('monthSel');
+  const cy=now.getFullYear();
+  for(let y=cy-2; y<=cy+3; y++){
+    const o=document.createElement('option'); o.value=y; o.textContent=y+'년'; yearSel.appendChild(o);
+  }
+  for(let m=1;m<=12;m++){
+    const o=document.createElement('option'); o.value=m; o.textContent=m+'월'; monthSel.appendChild(o);
+  }
+  yearSel.value=state.year; monthSel.value=state.month;
+  yearSel.onchange=()=>switchMonth(+yearSel.value, +monthSel.value);
+  monthSel.onchange=()=>switchMonth(+yearSel.value, +monthSel.value);
+}
+
+async function switchMonth(y,m){
+  await autoSave();           // 현재 달 보존
+  await loadMonth(y,m);
+}
+
+async function loadMonth(y,m){
+  const raw=await Store.get(reportKey(y,m));
+  if(raw){
+    try{
+      const d=JSON.parse(raw);
+      state={ year:y, month:m, brand:d.brand||state.brand,
+              checks:d.checks||{}, notes:Object.assign({book:'',video:'',play:''}, d.notes||{}) };
+    }catch(e){ state=freshState(y,m,state.brand); }
+  } else {
+    state=freshState(y,m,state.brand);
+  }
+  document.getElementById('yearSel').value=y;
+  document.getElementById('monthSel').value=m;
+  render();
+}
+
+/* ---------- Render ---------- */
+function buildWeeks(y,m){
+  const N=daysInMonth(y,m); const rows=[]; let week=1;
+  for(let d=1; d<=N; d++){
+    const dow=new Date(y,m-1,d).getDay();
+    if(d>1 && dow===0) week++;
+    rows.push({d,dow,week});
+  }
+  return rows;
+}
+
+function render(){
+  document.getElementById('docTitle').innerHTML =
+    `한달보고서 <small>${state.year}년 ${state.month}월</small>`;
+  document.getElementById('brandInput').value = state.brand;
+
+  const rows=buildWeeks(state.year, state.month);
+  const wkCount={}; rows.forEach(r=>wkCount[r.week]=(wkCount[r.week]||0)+1);
+
+  let html=''; let lastWk=null;
+  for(const r of rows){
+    const key=dateKey(state.year,state.month,r.d);
+    const c=state.checks[key]||{};
+    const we=(r.dow===0||r.dow===6)?'weekend':'';
+    html+='<tr>';
+    if(r.week!==lastWk){ html+=`<td class="wk" rowspan="${wkCount[r.week]}">week${r.week}</td>`; lastWk=r.week; }
+    html+=`<td class="dow ${we}">${DOW[r.dow]}</td>`;
+    html+=`<td class="date">${state.month}/${r.d}</td>`;
+    for(const cat of ['book','video','talk']){
+      html+=`<td class="cell-check tap" data-k="${key}" data-c="${cat}"><span class="box ${c[cat]?'on':''}"></span></td>`;
+    }
+    html+='</tr>';
+  }
+  document.getElementById('calBody').innerHTML=html;
+
+  for(const n of ['book','video','play']){
+    const t=document.querySelector(`[data-n="${n}"]`);
+    t.value=state.notes[n]||''; autosize(t);
+  }
+  syncNotePrint();
+  updateAllBtns();
+  updateSummary();
+}
+
+function updateSummary(){
+  const rows=buildWeeks(state.year, state.month);
+  const total=rows.length;
+  const cats=[['book','영어책','var(--navy)'],['video','영상','var(--sage)'],['talk','마주이야기','#c2861f']];
+  let html='';
+  for(const [cat,label,color] of cats){
+    let cnt=0;
+    rows.forEach(r=>{ const c=state.checks[dateKey(state.year,state.month,r.d)]; if(c&&c[cat]) cnt++; });
+    const pct = total ? Math.round(cnt/total*100) : 0;
+    html+=`<div class="stat" style="--c:${color}">
+      <div class="stat-top"><span class="stat-name">${label}</span>
+        <span class="stat-count"><b>${cnt}</b>일 / ${total}일</span></div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="stat-pct">${pct}%</div>
+    </div>`;
+  }
+  document.getElementById('summary').innerHTML=html;
+}
+
+function autosize(t){ t.style.height='auto'; t.style.height=(t.scrollHeight+2)+'px'; }
+
+function syncNotePrint(){
+  for(const n of ['book','video','play']){
+    const d=document.querySelector(`[data-np="${n}"]`);
+    if(d) d.textContent = state.notes[n]||'';
+  }
+}
+
+function updateAllBtns(){
+  const rows=buildWeeks(state.year, state.month);
+  document.querySelectorAll('.all-btn').forEach(btn=>{
+    const cat=btn.dataset.cat;
+    const allOn = rows.length>0 && rows.every(r=>{
+      const c=state.checks[dateKey(state.year,state.month,r.d)]; return c && c[cat];
+    });
+    btn.classList.toggle('active', allOn);
+  });
+}
+
+/* ---------- Interactions ---------- */
+document.getElementById('calTable').addEventListener('click', e=>{
+  const allBtn=e.target.closest('.all-btn');
+  if(allBtn){
+    const cat=allBtn.dataset.cat;
+    const turnOn=!allBtn.classList.contains('active');
+    buildWeeks(state.year, state.month).forEach(r=>{
+      const key=dateKey(state.year,state.month,r.d);
+      state.checks[key]=state.checks[key]||{};
+      state.checks[key][cat]=turnOn;
+    });
+    render(); scheduleSave(); return;
+  }
+  const td=e.target.closest('td.tap'); if(!td) return;
+  const key=td.dataset.k, cat=td.dataset.c;
+  state.checks[key]=state.checks[key]||{};
+  state.checks[key][cat]=!state.checks[key][cat];
+  td.querySelector('.box').classList.toggle('on', state.checks[key][cat]);
+  updateAllBtns(); updateSummary(); scheduleSave();
+});
+
+document.querySelectorAll('.note-area').forEach(t=>{
+  t.addEventListener('input', ()=>{
+    state.notes[t.dataset.n]=t.value; autosize(t); syncNotePrint(); scheduleSave();
+  });
+});
+
+document.getElementById('brandInput').addEventListener('input', e=>{
+  state.brand=e.target.value; scheduleSave();
+});
+
+/* ---------- Save / Load list ---------- */
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(autoSave, 500); }
+
+async function autoSave(){
+  await Store.set(reportKey(state.year,state.month), JSON.stringify(state));
+  await refreshLoadList();
+}
+
+document.getElementById('saveBtn').onclick=async()=>{
+  await autoSave(); toast(`${state.year}년 ${state.month}월 보고서를 저장했어요`);
+};
+
+async function refreshLoadList(){
+  const keys=await Store.list('momreport:');
+  const sel=document.getElementById('loadSel');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">저장된 보고서 불러오기</option>';
+  keys.sort().reverse().forEach(k=>{
+    const ym=k.replace('momreport:','').split('-');
+    const o=document.createElement('option');
+    o.value=k; o.textContent=`${+ym[0]}년 ${+ym[1]}월`;
+    sel.appendChild(o);
+  });
+  sel.value=cur;
+}
+
+document.getElementById('loadSel').onchange=async e=>{
+  if(!e.target.value) return;
+  await autoSave();
+  const ym=e.target.value.replace('momreport:','').split('-');
+  await loadMonth(+ym[0], +ym[1]);
+  e.target.value='';
+  toast('불러왔어요');
+};
+
+document.getElementById('clearBtn').onclick=()=>{
+  if(!confirm(`${state.year}년 ${state.month}월의 인증·기록을 모두 비울까요?`)) return;
+  state.checks={}; state.notes={book:'',video:'',play:''};
+  render(); scheduleSave(); toast('초기화했어요');
+};
+
+/* ---------- Backup ---------- */
+document.getElementById('exportBtn').onclick=async()=>{
+  await autoSave();
+  const keys=await Store.list('momreport:'); const out={};
+  for(const k of keys){ out[k]=await Store.get(k); }
+  const blob=new Blob([JSON.stringify({type:'momreport-backup', reports:out},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=`한달보고서_백업_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}.json`;
+  a.click(); URL.revokeObjectURL(url); toast('백업 파일을 내려받았어요');
+};
+
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      const reports=data.reports||data;
+      for(const k in reports){ if(k.startsWith('momreport:')) await Store.set(k, reports[k]); }
+      await refreshLoadList();
+      await loadMonth(state.year, state.month);
+      toast('백업을 가져왔어요');
+    }catch(err){ toast('파일을 읽을 수 없어요'); }
+  };
+  reader.readAsText(f); e.target.value='';
+};
+
+document.getElementById('printBtn').onclick=async()=>{
+  await autoSave();
+  const prevTitle=document.title;
+  document.title=`한달보고서_${state.year}년${pad(state.month)}월`;
+  const restore=()=>{ document.title=prevTitle; window.removeEventListener('afterprint', restore); };
+  window.addEventListener('afterprint', restore);
+  setTimeout(()=>{ document.title=prevTitle; }, 1500);
+  window.print();
+};
+
+/* ---------- Toast ---------- */
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'), 2000);
+}
+
+/* ---------- Start ---------- */
+(async function(){
+  initSelectors();
+  await refreshLoadList();
+  await loadMonth(state.year, state.month);
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
